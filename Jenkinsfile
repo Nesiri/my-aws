@@ -2,13 +2,47 @@ pipeline {
     agent any
     
     stages {
+        stage('Build'){
+            agent{
+                docker{
+                    image 'node:24.14.0-alpine'
+                    reuseNode true
+                }
+            }
+            steps{
+                sh'''
+                    ls -la
+                    node --version
+                    npm --version
+                    npm install
+                    npm run build
+                    ls -la
+                '''
+            }
+        }
+        stage('Test'){
+            agent{
+                docker{
+                    image 'node:24.14.0-alpine'
+                    reuseNode true
+                }
+            }
+            steps{
+                sh'''
+                    test -f build/index.html
+                    npm test
+                '''
+            }
+        }
         stage("AWS") {
             agent {
                 docker {
                     image 'amazon/aws-cli'
                     reuseNode true
-                    args '--entrypoint=""'
                 }
+            }
+            environment {
+                AWS_DEFAULT_REGION = 'us-east-1'
             }
             steps {
                 withCredentials([
@@ -19,18 +53,11 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        # export the credentials for the Docker container
-                        export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-                        export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-                        export AWS_DEFAULT_REGION=us-east-1
-                        
-                        # test AWS CLI
+                        echo "Testing AWS CLI"
                         aws --version
                         aws s3 ls
-                        
-                        # upload a test file
-                        echo "Hello S3" > index.html
-                        aws s3 cp index.html s3://nesru-bucket/index.html
+                        echo "Syncing build to S3"
+                        aws s3 sync build/ s3://nesru-bucket --delete
                     '''
                 }
             }
