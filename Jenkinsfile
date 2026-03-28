@@ -3,21 +3,24 @@ pipeline{
        any
     }
     stages{
-        stage("Delpoy"){
+        stage("AWS"){
+             agent{
+                docker{
+                    image 'amazon/aws-cli'
+                    reuseNode true
+                    args '--entrypoint=""'
+                }
+            }
             steps{
-                echo "========executing A========"
+                withCredentials([usernamePassword(credentialsId: 'aws-s3ID', passwordVariable: 'AWS_SECRET_ACCESS_KE', usernameVariable: 'AWS_ACCESS_KEY_ID')]) {
+  
+}
+                sh '''
+                aws ---version
+                aws s3 ls
+                   '''
             }
-            post{
-                always{
-                    echo "========always========"
-                }
-                success{
-                    echo "========A executed successfully========"
-                }
-                failure{
-                    echo "========A execution failed========"
-                }
-            }
+           
         }
     }
     post{
@@ -25,10 +28,10 @@ pipeline{
             echo "========always========"
         }
         success{
-            echo "========pipeline executed successfully ========"
+            echo "========AWS-S3 executed successfully ========"
         }
         failure{
-            echo "========pipeline execution failed========"
+            echo "========AWS-S3 execution failed========"
         }
     }
 }
